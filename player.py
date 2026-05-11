@@ -11,7 +11,7 @@ class MusicPlayer:
         self.music_dir = music_dir
         self.current_song = None
         self.play_thread = None
-        self.instance = vlc.Instance()
+        self.instance = vlc.Instance("--quiet")
         self.player = self.instance.media_player_new()
         self.volume = 100
         self.is_playing = False
@@ -24,6 +24,9 @@ class MusicPlayer:
     def _get_song_path(self, song_name):
         path = os.path.join(self.music_dir, song_name)
         if not os.path.isfile(path):
+            for filename in os.listdir(self.music_dir):
+                if filename.lower().endswith(('.mp3', '.wav', '.ogg', '.flac')) and song_name.lower() in filename.lower():
+                    return os.path.join(self.music_dir, filename)
             raise FileNotFoundError(f"song not found: {song_name}")
         return path
 
@@ -46,6 +49,7 @@ class MusicPlayer:
             print("Queue shuffled")
 
             if not self.is_playing:
+                self.is_playing = True
                 self._play_next()
 
     def skip(self):
@@ -68,7 +72,7 @@ class MusicPlayer:
             if filename.lower().endswith(('.mp3', '.wav', '.ogg', '.flac')):
                 full_path = os.path.join(self.music_dir, filename)
                 self.queue.append(full_path)
-            added += 1
+                added += 1
         print(f"Added {added} songs from {self.music_dir} to the queue")
 
     def clear_queue(self):
@@ -115,11 +119,31 @@ class MusicPlayer:
         )
         self.player.play()
 
-    def play(self):
+    def play(self, song=None):
+        if song:
+            song_path = self._get_song_path(song)
+            if self.player:
+                self.player.stop()
+            self.stop_event.clear()
+            self.is_paused = False
+            self.is_playing = True
+            self.player = self.instance.media_player_new()
+            media = self.instance.media_new(song_path)
+            self.player.set_media(media)
+            self.player.audio_set_volume(self.volume)
+            events = self.player.event_manager()
+            events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_song_end)
+            self.player.play()
+            print(f"Now Playing: {song}")
+            return
+
         if self.is_playing and self.is_paused:
             self.player.play()
             self.is_paused = False
             print("resumed")
+            return
+
+        if self.is_playing:
             return
 
         self.stop_event.clear()

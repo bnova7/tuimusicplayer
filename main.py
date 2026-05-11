@@ -32,7 +32,7 @@ def command_loop(player):
         argument = parts[1] if len(parts) > 1 else None
 
         if command == "play":
-            player.play()
+            player.play(argument)
         elif command == "pause":
             player.pause()
         elif command == "stop":
