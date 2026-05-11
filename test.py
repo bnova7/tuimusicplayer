@@ -1,8 +1,7 @@
 import os
 import unittest
 from collections import deque
-from unittest.mock import MagicMock, patch
-from io import StringIO
+from unittest.mock import MagicMock, patch, call
 
 
 # Patch vlc before importing player so the module loads without VLC installed
@@ -11,10 +10,10 @@ vlc_mock.EventType.MediaPlayerEndReached = 1
 
 with patch.dict("sys.modules", {"vlc": vlc_mock}):
     from player import MusicPlayer
+    import player as _player_module
 
 
 def make_player(tmp_path, songs=None):
-    """Create a MusicPlayer pointed at tmp_path, optionally pre-populate the dir."""
     if songs:
         for name in songs:
             open(os.path.join(tmp_path, name), "w").close()
@@ -25,6 +24,11 @@ def make_player(tmp_path, songs=None):
     return p
 
 
+def console_output(mock_print):
+    """Return all text passed to a patched console.print as a single string."""
+    return " ".join(str(a) for call in mock_print.call_args_list for a in call[0])
+
+
 class TestAddToQueue(unittest.TestCase):
     def setUp(self):
         import tempfile
@@ -33,7 +37,8 @@ class TestAddToQueue(unittest.TestCase):
     def test_valid_song_added(self):
         open(os.path.join(self.tmp, "song.mp3"), "w").close()
         p = make_player(self.tmp)
-        p.add_to_queue("song.mp3")
+        with patch.object(_player_module.console, "print"):
+            p.add_to_queue("song.mp3")
         self.assertIn("song.mp3", p.queue)
 
     def test_missing_song_raises(self):
@@ -51,7 +56,8 @@ class TestAddAllSongs(unittest.TestCase):
         for name in ["a.mp3", "b.wav", "c.ogg", "d.flac"]:
             open(os.path.join(self.tmp, name), "w").close()
         p = make_player(self.tmp)
-        p.add_all_songs()
+        with patch.object(_player_module.console, "print"):
+            p.add_all_songs()
         basenames = [os.path.basename(s) for s in p.queue]
         self.assertIn("a.mp3", basenames)
         self.assertIn("b.wav", basenames)
@@ -62,7 +68,8 @@ class TestAddAllSongs(unittest.TestCase):
         open(os.path.join(self.tmp, "notes.txt"), "w").close()
         open(os.path.join(self.tmp, "image.png"), "w").close()
         p = make_player(self.tmp)
-        p.add_all_songs()
+        with patch.object(_player_module.console, "print"):
+            p.add_all_songs()
         basenames = [os.path.basename(s) for s in p.queue]
         self.assertNotIn("notes.txt", basenames)
         self.assertNotIn("image.png", basenames)
@@ -74,12 +81,14 @@ class TestListQueue(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
 
     def test_empty_queue_message(self):
+        from io import StringIO
         p = make_player(self.tmp)
         with patch("sys.stdout", new_callable=StringIO) as out:
             p.list_queue()
         self.assertIn("empty", out.getvalue())
 
     def test_lists_songs(self):
+        from io import StringIO
         p = make_player(self.tmp)
         p.queue = deque(["/music/a.mp3", "/music/b.mp3"])
         with patch("sys.stdout", new_callable=StringIO) as out:
@@ -103,20 +112,23 @@ class TestShuffle(unittest.TestCase):
         original = list(p.queue)
         import random
         random.seed(42)
-        p.shuffle()
+        with patch.object(_player_module.console, "print"):
+            p.shuffle()
         self.assertEqual(sorted(p.queue), sorted(original))
 
     def test_auto_loads_when_queue_empty(self):
         p = make_player(self.tmp)
         p.is_playing = True
-        p.shuffle()
+        with patch.object(_player_module.console, "print"):
+            p.shuffle()
         self.assertGreater(len(p.queue), 0)
 
     def test_starts_playing_when_not_playing(self):
         p = make_player(self.tmp)
         p.is_playing = False
         p.queue = deque([os.path.join(self.tmp, "a.mp3")])
-        with patch.object(p, "_play_next") as mock_play:
+        with patch.object(p, "_play_next") as mock_play, \
+             patch.object(_player_module.console, "print"):
             p.shuffle()
         mock_play.assert_called_once()
 
@@ -131,14 +143,16 @@ class TestPlay(unittest.TestCase):
         p = make_player(self.tmp)
         p.is_playing = True
         p.is_paused = True
-        p.play()
+        with patch.object(_player_module.console, "print"):
+            p.play()
         p.player.play.assert_called()
         self.assertFalse(p.is_paused)
 
     def test_auto_loads_songs_when_queue_empty(self):
         p = make_player(self.tmp)
         with patch.object(p, "add_all_songs") as mock_load, \
-             patch.object(p, "_play_next"):
+             patch.object(p, "_play_next"), \
+             patch.object(_player_module.console, "print"):
             p.queue = deque()
             p.play()
         mock_load.assert_called_once()
@@ -146,10 +160,10 @@ class TestPlay(unittest.TestCase):
     def test_prints_error_when_no_songs(self):
         p = make_player(self.tmp)
         p.queue = deque()
-        with patch.object(p, "add_all_songs"):
-            with patch("sys.stdout", new_callable=StringIO) as out:
-                p.play()
-        self.assertIn("No songs", out.getvalue())
+        with patch.object(p, "add_all_songs"), \
+             patch.object(_player_module.console, "print") as mock_print:
+            p.play()
+        self.assertIn("No songs", console_output(mock_print))
 
 
 class TestPause(unittest.TestCase):
@@ -161,7 +175,8 @@ class TestPause(unittest.TestCase):
         p = make_player(self.tmp)
         p.is_playing = True
         p.is_paused = False
-        p.pause()
+        with patch.object(_player_module.console, "print"):
+            p.pause()
         p.player.pause.assert_called_once()
         self.assertTrue(p.is_paused)
 
@@ -169,16 +184,17 @@ class TestPause(unittest.TestCase):
         p = make_player(self.tmp)
         p.is_playing = True
         p.is_paused = True
-        p.pause()
+        with patch.object(_player_module.console, "print"):
+            p.pause()
         p.player.play.assert_called_once()
         self.assertFalse(p.is_paused)
 
     def test_error_when_nothing_playing(self):
         p = make_player(self.tmp)
         p.is_playing = False
-        with patch("sys.stdout", new_callable=StringIO) as out:
+        with patch.object(_player_module.console, "print") as mock_print:
             p.pause()
-        self.assertIn("Nothing", out.getvalue())
+        self.assertIn("Nothing", console_output(mock_print))
 
 
 class TestSkip(unittest.TestCase):
@@ -189,7 +205,8 @@ class TestSkip(unittest.TestCase):
     def test_skip_when_playing(self):
         p = make_player(self.tmp)
         p.is_playing = True
-        with patch.object(p, "_play_next") as mock_next:
+        with patch.object(p, "_play_next") as mock_next, \
+             patch.object(_player_module.console, "print"):
             p.skip()
         p.player.stop.assert_called_once()
         mock_next.assert_called_once()
@@ -197,9 +214,9 @@ class TestSkip(unittest.TestCase):
     def test_skip_when_not_playing(self):
         p = make_player(self.tmp)
         p.is_playing = False
-        with patch("sys.stdout", new_callable=StringIO) as out:
+        with patch.object(_player_module.console, "print") as mock_print:
             p.skip()
-        self.assertIn("nothing", out.getvalue().lower())
+        self.assertIn("nothing", console_output(mock_print).lower())
 
 
 class TestStop(unittest.TestCase):
@@ -209,12 +226,14 @@ class TestStop(unittest.TestCase):
 
     def test_stop_calls_player_stop(self):
         p = make_player(self.tmp)
-        p.stop()
+        with patch.object(_player_module.console, "print"):
+            p.stop()
         p.player.stop.assert_called_once()
 
     def test_stop_sets_stop_event(self):
         p = make_player(self.tmp)
-        p.stop()
+        with patch.object(_player_module.console, "print"):
+            p.stop()
         self.assertTrue(p.stop_event.is_set())
 
 
@@ -225,21 +244,23 @@ class TestSetVolume(unittest.TestCase):
 
     def test_valid_volume(self):
         p = make_player(self.tmp)
-        p.set_volume(50)
+        with patch.object(_player_module.console, "print"):
+            p.set_volume(50)
         self.assertEqual(p.volume, 50)
         p.player.audio_set_volume.assert_called_with(50)
 
     def test_boundary_values(self):
         p = make_player(self.tmp)
-        p.set_volume(0)
-        self.assertEqual(p.volume, 0)
-        p.set_volume(100)
-        self.assertEqual(p.volume, 100)
+        with patch.object(_player_module.console, "print"):
+            p.set_volume(0)
+            self.assertEqual(p.volume, 0)
+            p.set_volume(100)
+            self.assertEqual(p.volume, 100)
 
     def test_rejects_out_of_range(self):
         p = make_player(self.tmp)
         p.volume = 50
-        with patch("sys.stdout", new_callable=StringIO):
+        with patch.object(_player_module.console, "print"):
             p.set_volume(101)
             p.set_volume(-1)
         self.assertEqual(p.volume, 50)
@@ -249,12 +270,13 @@ class TestCommandLoop(unittest.TestCase):
     def _run_commands(self, player, commands):
         from main import command_loop
         inputs = iter(commands + ["quit"])
-        with patch("builtins.input", side_effect=inputs), \
-             patch("sys.stdout", new_callable=StringIO):
+        with patch("rich.prompt.Prompt.ask", side_effect=inputs), \
+             patch("main.console.print"):
             command_loop(player)
 
     def setUp(self):
         self.player = MagicMock()
+        self.player.queue = deque()
 
     def test_play(self):
         self._run_commands(self.player, ["play"])
@@ -277,8 +299,13 @@ class TestCommandLoop(unittest.TestCase):
         self.player.shuffle.assert_called_once()
 
     def test_list(self):
-        self._run_commands(self.player, ["list"])
-        self.player.list_queue.assert_called_once()
+        from main import command_loop
+        inputs = iter(["list", "quit"])
+        with patch("rich.prompt.Prompt.ask", side_effect=inputs), \
+             patch("main.console.print"), \
+             patch("main.print_queue") as mock_print_queue:
+            command_loop(self.player)
+        mock_print_queue.assert_called_once_with(self.player.queue)
 
     def test_add(self):
         self._run_commands(self.player, ["add song.mp3"])
@@ -291,16 +318,16 @@ class TestCommandLoop(unittest.TestCase):
     def test_unknown_command(self):
         from main import command_loop
         inputs = iter(["badcmd", "quit"])
-        with patch("builtins.input", side_effect=inputs), \
-             patch("sys.stdout", new_callable=StringIO) as out:
+        with patch("rich.prompt.Prompt.ask", side_effect=inputs), \
+             patch("main.console.print") as mock_print:
             command_loop(self.player)
-        self.assertIn("Unknown", out.getvalue())
+        self.assertIn("Unknown", console_output(mock_print))
 
     def test_quit_stops_player(self):
         from main import command_loop
         inputs = iter(["quit"])
-        with patch("builtins.input", side_effect=inputs), \
-             patch("sys.stdout", new_callable=StringIO):
+        with patch("rich.prompt.Prompt.ask", side_effect=inputs), \
+             patch("main.console.print"):
             command_loop(self.player)
         self.player.stop.assert_called_once()
 

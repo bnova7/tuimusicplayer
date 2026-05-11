@@ -3,7 +3,10 @@ import threading
 import os
 import random
 from collections import deque
-import vlc 
+import vlc
+from rich.console import Console
+
+console = Console()
 
 
 class MusicPlayer:
@@ -33,10 +36,10 @@ class MusicPlayer:
     def add_to_queue(self, song_name):
         song_path = self._get_song_path(song_name)
         if not os.path.exists(song_path):
-            print(f"song not found")
+            console.print("[red]Song not found.[/red]")
             return
         self.queue.append(song_name)
-        print(f"Added {song_name} to queue.")
+        console.print(f"[green]Added[/green] {song_name} to queue.")
 
     def shuffle(self):
         with self.lock:
@@ -46,7 +49,7 @@ class MusicPlayer:
             shuffled = list(self.queue)
             random.shuffle(shuffled)
             self.queue = deque(shuffled)
-            print("Queue shuffled")
+            console.print("[cyan]Queue shuffled.[/cyan]")
 
             if not self.is_playing:
                 self.is_playing = True
@@ -54,7 +57,7 @@ class MusicPlayer:
 
     def skip(self):
         if not self.is_playing:
-            print("There is nothing to skip.")
+            console.print("[yellow]There is nothing to skip.[/yellow]")
             return
         self.stop_event.set()
 
@@ -73,12 +76,12 @@ class MusicPlayer:
                 full_path = os.path.join(self.music_dir, filename)
                 self.queue.append(full_path)
                 added += 1
-        print(f"Added {added} songs from {self.music_dir} to the queue")
+        console.print(f"[green]Added {added} songs[/green] from {self.music_dir} to the queue.")
 
     def clear_queue(self):
         cleared = len(self.queue)
         self.queue.clear()
-        print(f"Cleared {cleared} queued songs")
+        console.print(f"[yellow]Cleared {cleared} songs from the queue.[/yellow]")
 
     def list_queue(self):
         if not self.queue:
@@ -97,11 +100,11 @@ class MusicPlayer:
     def _play_next(self):
         if not self.queue or self.stop_event.is_set():
             self.is_playing = False
-            print("Queue Finished")
+            console.print("[yellow]Queue finished.[/yellow]")
             return
 
         song = self.queue.popleft()
-        print(f"Now Playing: {os.path.basename(song)}")
+        console.print(f"[bold green]Now Playing:[/bold green] {os.path.basename(song)}")
 
         self.player = self.instance.media_player_new()
         media = self.instance.media_new(song)
@@ -131,13 +134,13 @@ class MusicPlayer:
             events = self.player.event_manager()
             events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_song_end)
             self.player.play()
-            print(f"Now Playing: {song}")
+            console.print(f"[bold green]Now Playing:[/bold green] {song}")
             return
 
         if self.is_playing and self.is_paused:
             self.player.play()
             self.is_paused = False
-            print("resumed")
+            console.print("[green]Resumed.[/green]")
             return
 
         if self.is_playing:
@@ -149,7 +152,7 @@ class MusicPlayer:
             self.add_all_songs()
 
         if not self.queue:
-            print("No songs to play.")
+            console.print("[yellow]No songs to play.[/yellow]")
             return
 
         self.is_playing = True
@@ -157,17 +160,17 @@ class MusicPlayer:
 
     def pause(self):
         if not self.is_playing:
-            print("Nothing is playing")
+            console.print("[yellow]Nothing is playing.[/yellow]")
             return
 
         if self.is_paused:
             self.player.play()
             self.is_paused = False
-            print("resumed")
+            console.print("[green]Resumed.[/green]")
         else:
             self.player.pause()
             self.is_paused = True
-            print("paused.")
+            console.print("[yellow]Paused.[/yellow]")
 
     def stop(self):
         with self.lock:
@@ -175,14 +178,14 @@ class MusicPlayer:
                 self.player.stop()
             self.paused = False
             self.stop_event.set()
-            print("playback stopped.")
+            console.print("[red]Playback stopped.[/red]")
 
     def set_volume(self, volume):
         if not 0 <= volume <= 100:
-            print("volume must be between 1 and 100")
+            console.print("[red]Volume must be between 0 and 100.[/red]")
             return
         with self.lock:
             self.volume = volume
             if self.player:
                 self.player.audio_set_volume(volume)
-        print(f"Volume set to {volume}")
+        console.print(f"[green]Volume set to {volume}.[/green]")

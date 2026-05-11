@@ -2,26 +2,46 @@ import argparse
 import os
 import subprocess
 
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.prompt import Prompt
+
 from player import MusicPlayer
+
+console = Console()
 
 
 def clear_screen():
     subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
 
 
+def print_queue(queue):
+    if not queue:
+        console.print("[yellow]Queue is empty.[/yellow]")
+        return
+    table = Table(title="Queue", border_style="cyan", header_style="bold cyan")
+    table.add_column("#", style="dim", width=4)
+    table.add_column("Song", style="white")
+    for i, song in enumerate(queue, 1):
+        table.add_row(str(i), os.path.basename(song))
+    console.print(table)
+
+
 def command_loop(player):
-    print("CLI Music Player")
-    print("Commands: ")
-    print("play | pause | stop | skip | shuffle | add | empty")
-    print("volume <0-100>")
-    print("list")
-    print("quit")
+    console.print(Panel.fit(
+        "[bold cyan]CLI Music Player[/bold cyan]\n\n"
+        "[green]play[/green] | [green]pause[/green] | [green]stop[/green] | [green]skip[/green] | [green]shuffle[/green] | [green]add <file>[/green] | [green]empty[/green]\n"
+        "[green]volume <0-100>[/green] | [green]list[/green] | [green]clear[/green] | [green]quit[/green]",
+        title="Commands",
+        border_style="cyan"
+    ))
 
     while True:
         try:
-            raw = input("> ").strip()
+            raw = Prompt.ask("[bold cyan]>[/bold cyan]").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nExiting...")
+            console.print("\n[yellow]Exiting...[/yellow]")
             player.stop()
             break
 
@@ -42,7 +62,7 @@ def command_loop(player):
         elif command == "volume" and argument:
             player.set_volume(int(argument))
         elif command == "list":
-            player.list_queue()
+            print_queue(player.queue)
         elif command == "skip":
             player.skip()
         elif command == "shuffle":
@@ -55,7 +75,7 @@ def command_loop(player):
             player.stop()
             break
         else:
-            print("Unknown Command")
+            console.print("[red]Unknown command.[/red]")
 
 
 def main():
@@ -64,7 +84,7 @@ def main():
     args = parser.parse_args()
 
     if not os.path.isdir(args.music_dir):
-        print("Invalid music directory")
+        console.print("[red]Invalid music directory.[/red]")
         return
     player = MusicPlayer(args.music_dir)
 
