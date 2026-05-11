@@ -12,7 +12,7 @@ def clear_screen():
 def command_loop(player):
     print("CLI Music Player")
     print("Commands: ")
-    print("play | pause | stop | skip | shuffle | add")
+    print("play | pause | stop | skip | shuffle | add | empty")
     print("volume <0-100>")
     print("list")
     print("quit")
@@ -49,6 +49,8 @@ def command_loop(player):
             player.shuffle()
         elif command == "clear":
             clear_screen()
+        elif command == "empty":
+            player.clear_queue()
         elif command in ("quit", "exit"):
             player.stop()
             break

@@ -30,6 +30,7 @@ python main.py ./music
 | Command | Description |
 |---|---|
 | `play` | Play the queue (loads all songs from the directory if empty) |
+| `play <filename>` | Stop current song and play a specific song immediately |
 | `pause` | Pause or resume playback |
 | `stop` | Stop playback |
 | `skip` | Skip to the next song |
@@ -37,6 +38,7 @@ python main.py ./music
 | `add <filename>` | Add a specific song to the queue |
 | `volume <0-100>` | Set the volume |
 | `list` | Show the current queue |
+| `empty` | Clear the queue |
 | `clear` | Clear the terminal screen |
 | `quit` / `exit` | Exit the player |
 

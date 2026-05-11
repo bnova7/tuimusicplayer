@@ -76,11 +76,8 @@ class MusicPlayer:
         print(f"Added {added} songs from {self.music_dir} to the queue")
 
     def clear_queue(self):
-        cleared = 0
-        while not self.queue.empty():
-            self.queue.get()
-            self.queue.task_done()
-            cleared += 1
+        cleared = len(self.queue)
+        self.queue.clear()
         print(f"Cleared {cleared} queued songs")
 
     def list_queue(self):
