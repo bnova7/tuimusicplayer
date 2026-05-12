@@ -39,7 +39,7 @@ class MusicPlayer:
             console.print("[red]Song not found.[/red]")
             return
         self.queue.append(song_path)
-        console.print(f"[green]Added[/green] {song_path} to queue.")
+        console.print(f"[green]Added[/green] {os.path.basename(song_path)} to queue.")
 
     def shuffle(self):
         with self.lock:
