@@ -33,13 +33,13 @@ class MusicPlayer:
             raise FileNotFoundError(f"song not found: {song_name}")
         return path
 
-    def add_to_queue(self, song_name):
-        song_path = self._get_song_path(song_name)
+    def add_to_queue(self, song_path):
+        song_path = self._get_song_path(song_path)
         if not os.path.exists(song_path):
             console.print("[red]Song not found.[/red]")
             return
-        self.queue.append(song_name)
-        console.print(f"[green]Added[/green] {song_name} to queue.")
+        self.queue.append(song_path)
+        console.print(f"[green]Added[/green] {song_path} to queue.")
 
     def shuffle(self):
         with self.lock:
@@ -133,7 +133,7 @@ class MusicPlayer:
             self.player.audio_set_volume(self.volume)
             events = self.player.event_manager()
             events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_song_end)
-            self.player.play()
+            self.player.play(song)
             console.print(f"[bold green]Now Playing:[/bold green] {song}")
             return
 
