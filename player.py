@@ -32,6 +32,13 @@ class MusicPlayer:
                     return os.path.join(self.music_dir, filename)
             raise FileNotFoundError(f"song not found: {song_name}")
         return path
+    
+    def search_song(self, query):
+        matches = []
+        for filename in os.listdir(self.music_dir):
+            if filename.lower().endswith(('.mp3', '.wav', '.ogg', '.flac')) and query.lower() in filename.lower():
+                matches.append(filename)
+        return matches
 
     def add_to_queue(self, song_path):
         song_path = self._get_song_path(song_path)
@@ -133,7 +140,7 @@ class MusicPlayer:
             self.player.audio_set_volume(self.volume)
             events = self.player.event_manager()
             events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_song_end)
-            self.player.play(song)
+            self.player.play()
             console.print(f"[bold green]Now Playing:[/bold green] {song}")
             return
 

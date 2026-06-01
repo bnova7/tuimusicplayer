@@ -32,7 +32,7 @@ def command_loop(player):
     console.print(Panel.fit(
         "[bold cyan]CLI Music Player[/bold cyan]\n\n"
         "[green]play[/green] | [green]pause[/green] | [green]stop[/green] | [green]skip[/green] | [green]shuffle[/green] | [green]add <file>[/green] | [green]empty[/green]\n"
-        "[green]volume <0-100>[/green] | [green]list[/green] | [green]clear[/green] | [green]quit[/green]",
+        "[green]volume <0-100>[/green] | [green]list[/green] | [green] search [/green] | [green]clear[/green] | [green]quit[/green]",
         title="Commands",
         border_style="cyan"
     ))
@@ -67,6 +67,14 @@ def command_loop(player):
             player.skip()
         elif command == "shuffle":
             player.shuffle()
+        elif command == "search":
+            if not argument:
+                console.print("[red] Please provide an argument [/red]" \
+                "[green]Usage:[/green] search <query>")
+            else:
+                player.search_song(argument)
+                console.print(f"[green]Search results for:[/green] {argument}")
+                console.print(player.search_song(argument))
         elif command == "clear":
             clear_screen()
         elif command == "empty":
