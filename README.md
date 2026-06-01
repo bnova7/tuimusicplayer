@@ -37,6 +37,7 @@ python main.py ./music
 | `shuffle` | Shuffle the queue and start playing |
 | `add <filename>` | Add a specific song to the queue |
 | `volume <0-100>` | Set the volume |
+| `search <query>` | Search for songs in the directory matching the query |
 | `list` | Show the current queue |
 | `empty` | Clear the queue |
 | `clear` | Clear the terminal screen |
