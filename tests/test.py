@@ -39,7 +39,7 @@ class TestAddToQueue(unittest.TestCase):
         p = make_player(self.tmp)
         with patch.object(_player_module.console, "print"):
             p.add_to_queue("song.mp3")
-        self.assertIn("song.mp3", p.queue)
+        self.assertIn(os.path.join(self.tmp, "song.mp3"), p.queue)
 
     def test_missing_song_raises(self):
         p = make_player(self.tmp)
@@ -330,6 +330,142 @@ class TestCommandLoop(unittest.TestCase):
              patch("main.console.print"):
             command_loop(self.player)
         self.player.stop.assert_called_once()
+
+
+class TestSearchSong(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+
+    def test_returns_matching_songs(self):
+        open(os.path.join(self.tmp, "rockstar.mp3"), "w").close()
+        open(os.path.join(self.tmp, "jazz.mp3"), "w").close()
+        p = make_player(self.tmp)
+        results = p.search_song("rock")
+        self.assertIn("rockstar.mp3", results)
+        self.assertNotIn("jazz.mp3", results)
+
+    def test_case_insensitive(self):
+        open(os.path.join(self.tmp, "Rockstar.mp3"), "w").close()
+        p = make_player(self.tmp)
+        results = p.search_song("ROCK")
+        self.assertIn("Rockstar.mp3", results)
+
+    def test_returns_empty_when_no_match(self):
+        open(os.path.join(self.tmp, "jazz.mp3"), "w").close()
+        p = make_player(self.tmp)
+        results = p.search_song("classical")
+        self.assertEqual(results, [])
+
+    def test_ignores_non_audio_files(self):
+        open(os.path.join(self.tmp, "rock.txt"), "w").close()
+        p = make_player(self.tmp)
+        results = p.search_song("rock")
+        self.assertNotIn("rock.txt", results)
+
+
+class TestCreatePlaylist(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+
+    def test_creates_new_playlist(self):
+        p = make_player(self.tmp)
+        with patch.object(_player_module, "write_to_playlists"), \
+             patch.object(_player_module.console, "print"):
+            p.create_playlist("chill")
+        self.assertIn("chill", p.playlists)
+        self.assertEqual(p.playlists["chill"], [])
+
+    def test_rejects_duplicate_name(self):
+        p = make_player(self.tmp)
+        p.playlists["chill"] = []
+        with patch.object(_player_module, "write_to_playlists") as mock_write, \
+             patch.object(_player_module.console, "print"):
+            p.create_playlist("chill")
+        mock_write.assert_not_called()
+
+    def test_saves_to_file(self):
+        p = make_player(self.tmp)
+        with patch.object(_player_module, "write_to_playlists") as mock_write, \
+             patch.object(_player_module.console, "print"):
+            p.create_playlist("chill")
+        mock_write.assert_called_once()
+
+
+class TestAddToPlaylist(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        open(os.path.join(self.tmp, "song.mp3"), "w").close()
+
+    def test_adds_song_to_existing_playlist(self):
+        p = make_player(self.tmp)
+        p.playlists["chill"] = []
+        with patch.object(_player_module, "write_to_playlists"), \
+             patch.object(_player_module.console, "print"):
+            p.add_to_playlist("chill", "song.mp3")
+        self.assertEqual(len(p.playlists["chill"]), 1)
+        self.assertIn("song.mp3", os.path.basename(p.playlists["chill"][0]))
+
+    def test_does_nothing_when_playlist_missing(self):
+        p = make_player(self.tmp)
+        with patch.object(_player_module, "write_to_playlists") as mock_write, \
+             patch.object(_player_module.console, "print"):
+            p.add_to_playlist("nonexistent", "song.mp3")
+        mock_write.assert_not_called()
+
+    def test_saves_to_file_after_adding(self):
+        p = make_player(self.tmp)
+        p.playlists["chill"] = []
+        with patch.object(_player_module, "write_to_playlists") as mock_write, \
+             patch.object(_player_module.console, "print"):
+            p.add_to_playlist("chill", "song.mp3")
+        mock_write.assert_called_once()
+
+
+class TestDeletePlaylist(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+
+    def test_deletes_existing_playlist(self):
+        p = make_player(self.tmp)
+        p.playlists["chill"] = []
+        with patch.object(_player_module, "write_to_playlists"), \
+             patch.object(_player_module.console, "print"):
+            p.delete_playlist("chill")
+        self.assertNotIn("chill", p.playlists)
+
+    def test_error_when_not_found(self):
+        p = make_player(self.tmp)
+        with patch.object(_player_module, "write_to_playlists") as mock_write, \
+             patch.object(_player_module.console, "print") as mock_print:
+            p.delete_playlist("nonexistent")
+        mock_write.assert_not_called()
+        self.assertIn("not found", console_output(mock_print).lower())
+
+
+class TestPlayPlaylist(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        open(os.path.join(self.tmp, "song.mp3"), "w").close()
+
+    def test_loads_playlist_into_queue(self):
+        p = make_player(self.tmp)
+        song_path = os.path.join(self.tmp, "song.mp3")
+        p.playlists["chill"] = [song_path]
+        with patch.object(p, "play"), \
+             patch.object(_player_module.console, "print"):
+            p.play_playlist("chill")
+        self.assertIn(song_path, p.queue)
+
+    def test_error_when_not_found(self):
+        p = make_player(self.tmp)
+        with patch.object(_player_module.console, "print") as mock_print:
+            p.play_playlist("nonexistent")
+        self.assertIn("not found", console_output(mock_print).lower())
 
 
 if __name__ == "__main__":

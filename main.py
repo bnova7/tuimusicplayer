@@ -70,11 +70,11 @@ def command_loop(player):
         elif command == "playlist" and subcommand == "delete" and argument:
             player.delete_playlist(argument)
         elif command == "playlist" and subcommand == "create" and argument:
-            player.create_playlist(argument)
-        elif command == "add" and argument:
-            player.add_to_queue(argument)
-        elif command == "volume" and argument:
-            player.set_volume(int(argument))
+            player.create_playlist(subcommand)
+        elif command == "add" and subcommand:
+            player.add_to_queue(subcommand)
+        elif command == "volume" and subcommand:
+            player.set_volume(int(subcommand))
         elif command == "list":
             print_queue(player.queue)
         elif command == "skip":
@@ -82,13 +82,13 @@ def command_loop(player):
         elif command == "shuffle":
             player.shuffle()
         elif command == "search":
-            if not argument:
+            if not subcommand:
                 console.print("[red] Please provide an argument [/red]" \
                 "[green]Usage:[/green] search <query>")
             else:
-                player.search_song(argument)
-                console.print(f"[green]Search results for:[/green] {argument}")
-                console.print(player.search_song(argument))
+                player.search_song(subcommand)
+                console.print(f"[green]Search results for:[/green] {subcommand}")
+                console.print(player.search_song(subcommand))
         elif command == "clear":
             clear_screen()
         elif command == "empty":
