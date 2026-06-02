@@ -42,6 +42,11 @@ python main.py ./music
 | `empty` | Clear the queue |
 | `clear` | Clear the terminal screen |
 | `quit` / `exit` | Exit the player |
+| `playlist create <name>` | Create a new playlist |
+| `playlist add <name> <filename>` | Add a song to a playlist |
+| `playlist play <name>` | Play a playlist |
+| `playlist list` | List all playlists |
+| `playlist delete <name>` | Delete a playlist |
 
 ## Supported Formats
 

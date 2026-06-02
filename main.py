@@ -32,7 +32,7 @@ def command_loop(player):
     console.print(Panel.fit(
         "[bold cyan]CLI Music Player[/bold cyan]\n\n"
         "[green]play[/green] | [green]pause[/green] | [green]stop[/green] | [green]skip[/green] | [green]shuffle[/green] | [green]add <file>[/green] | [green]empty[/green]\n"
-        "[green]volume <0-100>[/green] | [green]list[/green] | [green] search [/green] | [green]clear[/green] | [green]quit[/green]",
+        "[green]volume <0-100>[/green] | [green]list[/green] | [green] search [/green] | [green]clear[/green] | [green]playlist[/green] | [green]quit[/green]",
         title="Commands",
         border_style="cyan"
     ))
@@ -47,9 +47,11 @@ def command_loop(player):
 
         if not raw:
             continue
-        parts = raw.split(maxsplit=1)
+        parts = raw.split(maxsplit=3)
         command = parts[0]
-        argument = parts[1] if len(parts) > 1 else None
+        subcommand = parts[1] if len(parts) > 1 else None
+        argument = parts[2] if len(parts) > 2 else None
+        song_name = parts[3] if len(parts) > 3 else None
 
         if command == "play":
             player.play(argument)
@@ -57,6 +59,18 @@ def command_loop(player):
             player.pause()
         elif command == "stop":
             player.stop()
+        elif command == "playlist" and not subcommand and not argument:
+            console.print("[green]Playlist commands:[/green] create <name>, add <playlist> <song>, play <playlist>, list <playlist> , delete <playlist>")
+        elif command == "playlist" and subcommand == "add" and argument and song_name:
+            player.add_to_playlist(argument, song_name)
+        elif command == "playlist" and subcommand == "play" and argument:
+            player.play_playlist(argument)
+        elif command == "playlist" and subcommand == "list" and argument:
+            player.list_playlists(argument)
+        elif command == "playlist" and subcommand == "delete" and argument:
+            player.delete_playlist(argument)
+        elif command == "playlist" and subcommand == "create" and argument:
+            player.create_playlist(argument)
         elif command == "add" and argument:
             player.add_to_queue(argument)
         elif command == "volume" and argument:

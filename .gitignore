@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 music/
 .pytest_cache/
-
+playlists.json

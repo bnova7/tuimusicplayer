@@ -4,7 +4,10 @@ import os
 import random
 from collections import deque
 import vlc
+import json
 from rich.console import Console
+
+from playlists import load_playlists, write_to_playlists
 
 console = Console()
 
@@ -20,6 +23,7 @@ class MusicPlayer:
         self.is_playing = False
         self.is_paused = False
         self.play_thread = None
+        self.playlists = load_playlists()
         self.queue = deque()
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -90,6 +94,50 @@ class MusicPlayer:
         self.queue.clear()
         console.print(f"[yellow]Cleared {cleared} songs from the queue.[/yellow]")
 
+    def play_playlist(self, playlist_name):
+        if playlist_name in self.playlists:
+            self.queue = deque(self.playlists[playlist_name])
+            console.print(f"[green]Playing playlist:[/green] {playlist_name}")
+            self.play()
+        else:
+            console.print("[red]Playlist not found.[/red]")
+
+
+    def add_to_playlist(self, playlist_name, song_name):
+            if playlist_name in self.playlists:
+                song_path = self._get_song_path(song_name)
+                if os.path.exists(song_path):
+                    self.playlists[playlist_name].append(song_path)
+                    console.print(f"[green]Added {os.path.basename(song_path)} to playlist {playlist_name}.[/green]")
+                    write_to_playlists(self.playlists)
+                else:
+                    console.print("[red]Song not found.[/red]")
+
+
+    def list_playlists(self, playlist_name):
+        if playlist_name in self.playlists:
+            console.print(f"[green]Songs in playlist {playlist_name}:[/green]")
+            for song_path in self.playlists[playlist_name]:
+                console.print(f"- {os.path.basename(song_path)}")
+        else:
+            console.print("[red]Playlist not found.[/red]")
+
+    def delete_playlist(self, playlist_name):
+        if playlist_name in self.playlists:
+            del self.playlists[playlist_name]
+            console.print(f"[yellow]Deleted playlist:[/yellow] {playlist_name}")
+            write_to_playlists(self.playlists)
+        else:
+            console.print("[red]Playlist not found.[/red]")
+
+    def create_playlist(self, playlist_name):
+        if playlist_name in self.playlists:
+            console.print("[red]Playlist already exists.[/red]")
+        else:
+            self.playlists[playlist_name] = []
+            write_to_playlists(self.playlists)
+            console.print(f"[green]Created playlist:[/green] {playlist_name}")
+    
     def list_queue(self):
         if not self.queue:
             print("queue is empty.")
