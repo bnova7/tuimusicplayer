@@ -10,8 +10,22 @@ A command-line music player built with Python and VLC.
 
 ## Installation
 
+### For users
+Install system dependencies and Python packages:
 ```bash
-pip install python-vlc
+make install
+```
+
+### For developers
+Set up a virtual environment:
+```bash
+make dev
+source venv/bin/activate
+```
+
+Run tests:
+```bash
+make test
 ```
 
 ## Usage

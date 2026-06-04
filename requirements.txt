@@ -1,0 +1,3 @@
+rich
+python-vlc
+pytest
